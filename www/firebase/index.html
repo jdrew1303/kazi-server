@@ -1,0 +1,202 @@
+<html>
+  <head>
+
+  	
+    <!-- Latest compiled and minified CSS -->
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+
+	<!-- Optional theme -->
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap-theme.min.css">
+
+	<link rel="shortcut icon" href="data:image/x-icon;," type="image/x-icon"> 
+
+  	<script src='http://sugarjs.com/release/current/sugar.min.js'></script>
+    <script src='https://cdn.firebase.com/js/client/2.2.1/firebase.js'></script>
+    <script src='https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js'></script>
+    <script src='js/json.human.js'></script>
+
+    <style type="text/css">
+    	*{
+    		font-size:14px;
+    	}
+    	table table *{
+    		font-size:13px;
+    	}
+    	ul{
+    		max-height: 250px;
+    		overflow-y: scroll;
+    		overflow-x: hidden;
+    	}
+    </style>
+
+  </head>
+  <body style="margin-top:50px">
+
+  	<div class="container">
+
+	  	<div class="panel panel-primary">
+		  <!-- Default panel contents -->
+		  <div class="panel-heading">KAZI Real Time Jobs Visualizer</div>
+		  <div class="panel-body">
+		    <p>This panel helps you visualize (via <a href="https://www.firebase.com" target="_blank">Firebase</a>) what Kazi is busy doing in near-realtime. </p>
+
+		    <div class="list-group">
+				<span href="#" class="list-group-item active"> Server Logs </span>
+		    	<div id='serverLogs'> <h2>Loading Data. Please Wait...</h2></div>
+		    
+		    </div>
+		    <div id='clientLogs'> 
+
+		     	<div class="list-group">
+					<span href="#" class="list-group-item active">
+						Message Logs
+					</span>
+					<pre> <ul class="list-group" id="logs" style="margin:0;padding:0;"></ul> </pre>
+			    </div>
+
+			    <div class="list-group">				   
+					<span href="#" class="list-group-item active">
+						Error Logs
+					</span>
+ 					<pre> <ul class="list-group" id="errors"  style="margin:0;padding:0;"></ul>  </pre>
+			    </div>
+
+		     </div>
+		  </div>
+
+		</div>
+
+    </div>
+    
+    <script>
+
+    var obj_size=0;
+    var config=
+
+    $(function(){
+
+
+
+		$.getJSON( "config.json", function( data ) {
+		  	console.log(data.firebase_url);
+
+			var serverRef = new Firebase(data.firebase_url);
+
+	   		var str=$('#serverLogs').html();
+	   		var last_log=''
+	   		var last_err='';
+
+			serverRef.on("value", function(snapshot) {
+
+				var a = snapshot.exportVal();
+				var j=''
+				var obj={}
+
+				if(typeof a.server !=='undefined'){
+					for(var i in a.server){
+						j='server: '+i;
+						obj[j]=(typeof a.server[i] == 'object')? Object.values(a.server[i]):a.server[i]
+					}
+				}
+
+				obj['--']=''
+
+				if(typeof a.client !=='undefined'){
+					for(var i in a.client){
+						j='client: '+i.replace(/client_?/ig,'');
+						obj[j]=(typeof a.client[i] == 'object')? Object.values(a.client[i]):a.client[i]
+					}
+				}
+
+				//table seperator ro
+				obj['---']=''
+
+				if(typeof a.job !=='undefined'){
+					for(var i in a.job){
+						j='job: '+i.replace(/job_?/ig,'');
+						// console.log(j)
+						obj[j]=(typeof a.job[i] == 'object')? format_obj(a.job[i]) : a.job[i]
+					}
+				}
+
+				// console.log(obj)
+		
+				var html = '<table class="table table-bordered">';
+				$.each(obj, function(key, value){
+
+					if(key.indexOf('-')==0){
+						html += '<tr ><td class="" style="border:none;"></td><td class="" style="border:none;"></td></tr>';
+					}
+					else{
+						html += '<tr>';
+			            html += '<td style="width:30%" class="active"><strong>' + key.dasherize().replace(/-/g,' ').capitalize(true) + '</strong></td>';
+			            html += '<td class="value"  >'+value+'</td>';
+			            html += '</tr>';	
+					}
+		        });
+		        html += '</table>';
+
+		        $('#serverLogs').html(html);
+
+		        // assign(obj)
+
+		        //hold size in memory...
+		        obj_size=Object.size(obj);
+				
+
+				/*Client logs*/
+
+				var max_list_size=10;
+				var logs_size=0;
+				var errors_size=0;
+				
+
+
+				if(typeof a.log !=='undefined' && last_log !== a.log){
+
+					$('#clientLogs #logs').prepend('<li class="list-group-item list-group-item-info">'+a.log+'</li>')
+
+					if(logs_size<max_list_size){ logs_size=$('#clientLogs #logs li').length; }
+					else{ $('#clientLogs #logs li:last-child').remove() }
+
+					last_log=a.log;
+					
+				}
+				
+				if(typeof a.error !=='undefined' && a.error.length>0 && a.error!==last_err){
+
+					$('#clientLogs #errors').prepend('<li class="list-group-item list-group-item-danger">'+a.error+'</li>')
+
+					if(errors_size<max_list_size){ errors_size=$('#clientLogs #errors li').length; }
+					else{ $('#clientLogs #errors li:last-child').remove() }
+
+					last_err=a.error;
+				}
+				
+			});  	
+		});
+
+		
+
+		function format_obj(obj){
+			
+			var node= '<table class="table table-bordered">'+ JsonHuman.format(obj).innerHTML + '</table>';
+
+			return node;
+		}
+
+		function assign(obj){
+			$('#serverLogs table .value').each(function(){
+				var el=$(this);
+				el.text(el.data('assign').assign(obj).replace(/\{.+\}/,'--') )
+			})
+		}
+
+		
+		
+    });
+      
+
+    </script>
+  </body>
+</html>
