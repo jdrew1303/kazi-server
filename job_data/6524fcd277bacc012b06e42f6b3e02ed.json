@@ -1,0 +1,14 @@
+{
+    "job_id": "Tracking:Museveni",
+    "locale": "ke",
+    "terms": [
+        "museveni"
+    ],
+    "platforms": [
+        "twitter"
+    ],
+    "max_id": "648583160100462591",
+    "since_id": "649800290342989825",
+    "platform": "twitter",
+    "idle_duration": "0"
+}
